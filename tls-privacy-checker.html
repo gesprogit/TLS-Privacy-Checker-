@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TLS Privacy Checker — Verificador RGPD</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a0d1a;
+  --surface: #2a1228;
+  --surface2: #3a1a38;
+  --border: rgba(220,160,181,0.2);
+  --accent: #ffe855;
+  --accent2: #fcc123;
+  --text: #f5e6f0;
+  --muted: #b18a20;
+  --ok: #ffe855;
+  --warn: #fcc123;
+  --bad: #ca7191;
+  --info: #dca0b5;
+  --font-mono: 'Space Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(220,160,181,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(220,160,181,0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 5rem;
+}
+
+header {
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.logo-group { display: flex; flex-direction: column; gap: 4px; }
+
+.logo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-family: var(--font-mono);
+  font-size: clamp(1.4rem, 4vw, 2rem);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+h1 span { color: var(--accent); }
+
+.subtitle {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 6px;
+  font-weight: 300;
+}
+
+.version-pill {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--muted);
+  align-self: flex-start;
+}
+
+.search-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.search-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.search-row { display: flex; gap: 10px; }
+
+.search-row input {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.search-row input::placeholder { color: #60345e; }
+.search-row input:focus { border-color: var(--accent); }
+
+.btn-analyze {
+  background: var(--accent);
+  color: #1a0d1a;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 20px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-analyze:hover { opacity: 0.9; }
+.btn-analyze:active { transform: scale(0.98); }
+.btn-analyze:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.apikey-row { margin-top: 12px; }
+
+.apikey-row input {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 9px 14px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.apikey-row input::placeholder { color: #60345e; }
+.apikey-row input:focus { border-color: var(--accent2); }
+
+.apikey-note { font-size: 11px; color: var(--muted); margin-top: 6px; }
+.apikey-note a { color: var(--accent); text-decoration: none; }
+.apikey-note a:hover { text-decoration: underline; }
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.2s, border-color 0.2s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+.empty-state { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+.empty-state .icon { font-size: 2.5rem; margin-bottom: 1rem; opacity: 0.4; }
+.empty-state p { font-size: 14px; line-height: 1.6; }
+
+.loading { text-align: center; padding: 4rem 2rem; }
+.loading-text { font-family: var(--font-mono); font-size: 12px; color: var(--accent); letter-spacing: 0.1em; }
+.loading-bar { width: 200px; height: 2px; background: var(--surface2); border-radius: 2px; margin: 1rem auto 0; overflow: hidden; position: relative; }
+.loading-bar::after { content: ''; position: absolute; left: -40%; top: 0; width: 40%; height: 100%; background: var(--accent); animation: loading 1.2s ease infinite; }
+@keyframes loading { to { left: 100%; } }
+
+.domain-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 1.5rem; }
+.domain-name { font-family: var(--font-mono); font-size: 18px; color: var(--text); }
+.analysis-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+
+.summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin-bottom: 1.5rem; }
+
+.metric {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  position: relative;
+  overflow: hidden;
+}
+.metric::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+.metric.ok::before { background: var(--ok); }
+.metric.warn::before { background: var(--warn); }
+.metric.bad::before { background: var(--bad); }
+.metric.info::before { background: var(--info); }
+
+.metric-label { font-size: 10px; font-family: var(--font-mono); color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+.metric-value { font-family: var(--font-mono); font-size: 20px; font-weight: 700; }
+.metric-value.ok { color: var(--ok); }
+.metric-value.warn { color: var(--warn); }
+.metric-value.bad { color: var(--bad); }
+.metric-value.info { color: var(--info); }
+
+.findings-label { font-family: var(--font-mono); font-size: 10px; color: var(--accent); letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 10px; }
+.findings { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+
+.finding {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid transparent;
+}
+.finding.ok { border-left-color: var(--ok); }
+.finding.warn { border-left-color: var(--warn); }
+.finding.bad { border-left-color: var(--bad); }
+.finding.info { border-left-color: var(--info); }
+
+.finding-header { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+
+.badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+.badge.ok { background: rgba(255,232,85,0.15); color: var(--ok); }
+.badge.warn { background: rgba(252,193,35,0.15); color: var(--warn); }
+.badge.bad { background: rgba(202,113,145,0.15); color: var(--bad); }
+.badge.info { background: rgba(220,160,181,0.15); color: var(--info); }
+
+.finding-title { font-size: 14px; font-weight: 500; color: var(--text); }
+.finding-detail { font-size: 13px; color: #dca0b5; line-height: 1.6; margin-bottom: 8px; }
+
+.rgpd-ref {
+  font-size: 11px;
+  color: var(--accent2);
+  font-family: var(--font-mono);
+  background: rgba(252,193,35,0.07);
+  border-left: 2px solid rgba(252,193,35,0.3);
+  padding: 6px 10px;
+  border-radius: 0 4px 4px 0;
+  line-height: 1.5;
+}
+
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.btn-secondary {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--accent);
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn-secondary:hover { background: rgba(255,232,85,0.08); border-color: var(--accent); }
+
+.history-item { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.history-item:last-child { border-bottom: none; }
+.history-domain { font-family: var(--font-mono); font-size: 13px; flex: 1; }
+.history-time { font-size: 11px; color: var(--muted); font-family: var(--font-mono); }
+.history-btn { font-family: var(--font-mono); font-size: 10px; color: var(--accent); background: none; border: 1px solid var(--border); padding: 4px 10px; border-radius: 4px; cursor: pointer; }
+.history-btn:hover { background: rgba(255,232,85,0.08); }
+
+.error-card { background: rgba(202,113,145,0.07); border: 1px solid rgba(202,113,145,0.3); border-radius: 10px; padding: 1.25rem; }
+.error-title { font-family: var(--font-mono); font-size: 12px; color: var(--bad); margin-bottom: 6px; }
+.error-msg { font-size: 13px; color: var(--muted); }
+
+.disclaimer { margin-top: 2rem; padding: 1rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; font-size: 11px; color: var(--muted); line-height: 1.6; }
+.disclaimer strong { color: var(--warn); }
+
+@media (max-width: 600px) {
+  .summary-grid { grid-template-columns: repeat(2, 1fr); }
+  .search-row { flex-direction: column; }
+  .btn-analyze { width: 100%; }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-group">
+      <span class="logo">// herramienta de consultoría</span>
+      <h1>TLS <span>Privacy</span> Checker</h1>
+      <p class="subtitle">Verificador de cifrado y protocolos · Mapeo automático RGPD</p>
+    </div>
+    <span class="version-pill">v1.1 · RGPD/LOPDGDD</span>
+  </header>
+
+  <div class="search-card">
+    <span class="search-label">// dominio a analizar</span>
+    <div class="search-row">
+      <input type="text" id="domain" placeholder="ejemplo.com" />
+      <button class="btn-analyze" id="analyze-btn" onclick="analyze()">Analizar →</button>
+    </div>
+    <div class="apikey-row">
+      <input type="password" id="apikey" placeholder="API Key de OpenRouter (sk-or-...)" />
+    </div>
+
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('results', this)">Resultados</button>
+    <button class="tab" onclick="switchTab('history', this)">Historial</button>
+  </div>
+
+  <div id="tab-results">
+    <div id="output">
+      <div class="empty-state">
+        <div class="icon">⬡</div>
+        <p>Introduce un dominio y tu API key para comenzar el análisis TLS/SSL<br>con mapeo automático a los artículos del RGPD.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-history" style="display:none;">
+    <div id="history-list">
+      <div class="empty-state"><p>Sin análisis previos en esta sesión.</p></div>
+    </div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Aviso:</strong> Análisis estimado basado en el perfil de seguridad conocido del dominio y mejores prácticas del sector. Para datos exactos en tiempo real combinar con SSL Labs o <code>testssl.sh</code>. No constituye asesoramiento legal vinculante.
+  </div>
+
+</div>
+
+<script>
+const sessionHistory = [];
+const historyData = {};
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-results').style.display = tab === 'results' ? 'block' : 'none';
+  document.getElementById('tab-history').style.display = tab === 'history' ? 'block' : 'none';
+  if (tab === 'history') renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if (!sessionHistory.length) {
+    el.innerHTML = '<div class="empty-state"><p>Sin análisis previos en esta sesión.</p></div>';
+    return;
+  }
+  el.innerHTML = sessionHistory.map(h => `
+    <div class="history-item">
+      <span class="history-domain">${h.domain}</span>
+      <span class="history-time">${h.date}</span>
+      <span class="badge ${h.score >= 80 ? 'ok' : h.score >= 50 ? 'warn' : 'bad'}">${h.score}/100</span>
+      <button class="history-btn" onclick="renderOutput('${h.domain}', historyData['${h.domain}'])">Ver</button>
+    </div>`).join('');
+}
+
+async function analyze() {
+  const domain = document.getElementById('domain').value.trim().replace(/^https?:\/\//,'').replace(/\/.*$/,'');
+  const apiKey = document.getElementById('apikey').value.trim();
+
+  if (!domain) { alert('Introduce un dominio.'); return; }
+  if (!apiKey) { alert('Introduce tu API key de OpenRouter.'); return; }
+
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.textContent = 'Analizando...';
+
+  document.getElementById('output').innerHTML = `
+    <div class="loading">
+      <div class="loading-text">// analizando ${domain}</div>
+      <div class="loading-bar"></div>
+    </div>`;
+
+  const prompt = `Analiza TLS/SSL del dominio "${domain}". Responde SOLO con JSON válido, sin texto extra ni markdown.
+
+{"score":<0-100>,"cert_valid":<bool>,"cert_days":<int>,"tls_version":"<TLS 1.3|TLS 1.2|TLS 1.1|TLS 1.0>","hsts":<bool>,"findings":[{"id":"<str>","status":"<ok|warn|bad|info>","title":"<max 6 palabras>","detail":"<1-2 frases técnicas en español>","rgpd":"<art. RGPD aplicable y motivo breve>"}]}
+
+5-6 findings: versión TLS, certificado, HSTS, Forward Secrecy, cipher suites, cabeceras HTTP. Artículos RGPD: 5.1.f, 25, 32, cons.83.`;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://tls-privacy-checker.local',
+        'X-Title': 'TLS Privacy Checker'
+      },
+      body: JSON.stringify({
+        model: 'anthropic/claude-haiku-4-5',
+        max_tokens: 900,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: { message: res.statusText } }));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const rawText = (data.choices?.[0]?.message?.content || '').trim();
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('Respuesta inesperada de la API.');
+    const r = JSON.parse(jsonMatch[0]);
+
+    historyData[domain] = r;
+    if (!sessionHistory.find(h => h.domain === domain)) {
+      sessionHistory.unshift({
+        domain, score: r.score,
+        date: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+      });
+    }
+    renderOutput(domain, r);
+
+  } catch (e) {
+    document.getElementById('output').innerHTML = `
+      <div class="error-card">
+        <div class="error-title">// error en el análisis</div>
+        <div class="error-msg">${e.message}</div>
+      </div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Analizar →';
+  }
+}
+
+function renderOutput(domain, r) {
+  const sc = r.score >= 80 ? 'ok' : r.score >= 50 ? 'warn' : 'bad';
+  const tlsc = r.tls_version === 'TLS 1.3' ? 'ok' : r.tls_version === 'TLS 1.2' ? 'warn' : 'bad';
+  const cc = r.cert_valid && r.cert_days > 30 ? 'ok' : r.cert_valid && r.cert_days > 0 ? 'warn' : 'bad';
+  const ct = r.cert_valid ? (r.cert_days > 0 ? `${r.cert_days}d` : 'Expirado') : 'Inválido';
+  const labels = { ok: 'Correcto', warn: 'Advertencia', bad: 'Crítico', info: 'Info' };
+
+  document.getElementById('output').innerHTML = `
+    <div class="domain-header">
+      <span class="domain-name">${domain}</span>
+      <span class="analysis-time">${new Date().toLocaleString('es-ES')}</span>
+    </div>
+    <div class="summary-grid">
+      <div class="metric ${sc}">
+        <div class="metric-label">Puntuación</div>
+        <div class="metric-value ${sc}">${r.score}/100</div>
+      </div>
+      <div class="metric ${tlsc}">
+        <div class="metric-label">Protocolo TLS</div>
+        <div class="metric-value ${tlsc}" style="font-size:14px;">${r.tls_version}</div>
+      </div>
+      <div class="metric ${cc}">
+        <div class="metric-label">Certificado</div>
+        <div class="metric-value ${cc}" style="font-size:14px;">${ct}</div>
+      </div>
+      <div class="metric ${r.hsts ? 'ok' : 'bad'}">
+        <div class="metric-label">HSTS</div>
+        <div class="metric-value ${r.hsts ? 'ok' : 'bad'}" style="font-size:14px;">${r.hsts ? 'Activo' : 'Ausente'}</div>
+      </div>
+    </div>
+    <div class="findings-label">// hallazgos y mapeo RGPD</div>
+    <div class="findings">
+      ${r.findings.map(f => `
+        <div class="finding ${f.status}">
+          <div class="finding-header">
+            <span class="badge ${f.status}">${labels[f.status] || f.status}</span>
+            <span class="finding-title">${f.title}</span>
+          </div>
+          <div class="finding-detail">${f.detail}</div>
+          <div class="rgpd-ref">${f.rgpd}</div>
+        </div>`).join('')}
+    </div>
+    <div class="actions">
+      <button class="btn-secondary" onclick="exportJSON('${domain}')">Exportar JSON →</button>
+      <button class="btn-secondary" onclick="exportReport('${domain}')">Exportar informe TXT →</button>
+    </div>
+  `;
+}
+
+function exportJSON(domain) {
+  const data = historyData[domain];
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `tls-${domain}-${Date.now()}.json`;
+  a.click();
+}
+
+function exportReport(domain) {
+  const r = historyData[domain];
+  if (!r) return;
+  const labels = { ok: 'CORRECTO', warn: 'ADVERTENCIA', bad: 'CRÍTICO', info: 'INFO' };
+  const lines = [
+    `TLS PRIVACY CHECKER — INFORME DE ANÁLISIS`,
+    `==========================================`,
+    `Dominio: ${domain}`,
+    `Fecha: ${new Date().toLocaleString('es-ES')}`,
+    ``,
+    `RESUMEN`,
+    `-------`,
+    `Puntuación: ${r.score}/100`,
+    `TLS: ${r.tls_version}`,
+    `Certificado: ${r.cert_valid ? 'Válido' : 'Inválido'} (${r.cert_days}d restantes)`,
+    `HSTS: ${r.hsts ? 'Activo' : 'No configurado'}`,
+    ``,
+    `HALLAZGOS Y REFERENCIAS RGPD`,
+    `-----------------------------`,
+    ...r.findings.map(f =>
+      `[${labels[f.status]}] ${f.title}\n  ${f.detail}\n  RGPD: ${f.rgpd}\n`
+    ),
+    `AVISO: Análisis estimado. Combinar con SSL Labs o testssl.sh para datos exactos.`,
+    `Generado con TLS Privacy Checker — consultoría RGPD.`
+  ];
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `informe-tls-${domain}-${Date.now()}.txt`;
+  a.click();
+}
+
+document.getElementById('domain').addEventListener('keydown', e => {
+  if (e.key === 'Enter') analyze();
+});
+</script>
+</body>
+</html>
